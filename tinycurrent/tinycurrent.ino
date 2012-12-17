@@ -32,10 +32,10 @@ void loop()
 {
       count++ ;
       oSerial.print(count);
-      oSerial.print(",");
-      oSerial.print(getVcc());
-      oSerial.print(",");
-      oSerial.print(getTemp());
+      //oSerial.print(",");
+      //oSerial.print(getVcc());
+      //oSerial.print(",");
+      //oSerial.print(getTemp());
       oSerial.print(",");
       oSerial.print(analogRead(1));  // Unbuffered input
       oSerial.print(",");
@@ -71,7 +71,7 @@ long getVcc() {
   result = ADCL;
   result |= ADCH<<8;
   result = 1126400L / result; // Back-calculate AVcc in mV
-  result = result + 1100; // add 1100 mV to get Vcc
+  result = result; // add 1100 mV to get Vcc
   return result;
 }
 
