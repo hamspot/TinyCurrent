@@ -3,8 +3,26 @@
 // require software serial port to support Atmel attiny85 microcontroller
 #include <SoftwareSerial.h>
 
+/* Pin assignments based on chip used 8 pin vs 28 pin */
+#if defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__) || (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+int PIN_TXD = 1;    // Pin 6
+int PIN_RXD = 0;    // Pin 5
+int PIN_PHASE0 = 3; // Pin 2
+int PIN_PHASE1 = 4; // Pin 3
+int PIN_VOLTS = 2;  // Pin 7
+#else
+int PIN_TXD = 1;    // Pin 3
+int PIN_RXD = 0;    // Pin 2
+int PIN_PHASE0 = A0; // Pin 23
+int PIN_PHASE1 = A1; // Pin 24
+int PIN_VOLTS = A2;  // Pin 25
+#endif
+
+/* serial port is software on attiny and hardware on atmega */
+#if defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__) || (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
 // attiny85 virtual serial port: Pin 5 RX, Pin 6 TX
-SoftwareSerial oSerial(0, 1);
+SoftwareSerial Serial(PIN_RXD, PIN_TXD);
+#endif 
 
 // Current Monitors
 EnergyMonitor monPhase0;
@@ -16,12 +34,22 @@ long count = 0;
 // initialize the board for operation
 void setup()  
 {
-  oSerial.begin(9600);  // data rate for serial port
+  // Apply clock calibration obtained from TinyTuner
+  OSCCAL=0x4A;
+  
+  Serial.begin(19200);  // data rate for serial port
+  
+  Serial.println(";bootup TinyCurrent v0.1");
+  
+  // initialize the pins
+  pinMode(PIN_VOLTS, INPUT_PULLUP);
+  pinMode(PIN_PHASE0, INPUT_PULLUP);
+  pinMode(PIN_PHASE1, INPUT_PULLUP);
   
   // power factor correction = 200A (line current) / 0.1A (ct current) / 33 ohms (burden)
   float pfc = 60.606;
-  monPhase0.current(2, pfc); // Phase 0 monitor
-  monPhase1.current(3, pfc); // Phase 1 monitor
+  monPhase0.current(PIN_PHASE0, pfc); // Phase 0 monitor
+  monPhase1.current(PIN_PHASE1, pfc); // Phase 1 monitor
   
   delay (500);  // let circuit settle half a second
 }
@@ -31,89 +59,18 @@ void setup()
 void loop()
 {
       count++ ;
-      oSerial.print(count);
-      //oSerial.print(",");
-      //oSerial.print(getVcc());
-      //oSerial.print(",");
-      //oSerial.print(getTemp());
-      oSerial.print(",");
-      oSerial.print(analogRead(1));  // Unbuffered input
-      oSerial.print(",");
+      Serial.print(count);
+      Serial.print(",");
+      Serial.print(analogRead(PIN_VOLTS));  // Unbuffered input
+      Serial.print(",");
       // Phase 0 RMS
       double rmsPhase0 = (monPhase0.calcIrms(1480) * 230.0);
-      oSerial.print(rmsPhase0);
-      oSerial.print(",");
+      Serial.print(rmsPhase0);
+      Serial.print(",");
       // Phase 1 RMS
       double rmsPhase1 = (monPhase1.calcIrms(1480) * 230.0);
-      oSerial.print(rmsPhase1);
-      oSerial.print("\n");
+      Serial.print(rmsPhase1);
+      Serial.print("\n");
       delay(100);
 }
 
-
-long getVcc() {
-  long result;
-  // Read 1.1V reference against AVcc
-  #if defined(__AVR_ATmega32U4__)
-    ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0);
-    ADCSRB = _BV(MUX5); // the MUX5 bit is in the ADCSRB register
-  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-    ADMUX = _BV(REFS1) | _BV(MUX5) | _BV(MUX1);
-  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-    ADMUX = _BV(REFS1) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0);
-  #else
-    ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX3);
-  #endif
-
-  delay(2); // Wait for Vref to settle
-  ADCSRA |= _BV(ADSC); // Convert
-  while (bit_is_set(ADCSRA,ADSC));
-  result = ADCL;
-  result |= ADCH<<8;
-  result = 1126400L / result; // Back-calculate AVcc in mV
-  result = result; // add 1100 mV to get Vcc
-  return result;
-}
-
-long readTemp() { 
-  // Read 1.1V reference against AVcc
-  #if defined(__AVR_ATmega32U4__)
-    ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0);
-    ADCSRB = _BV(MUX5); // the MUX5 bit is in the ADCSRB register
-  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
-    ADMUX = _BV(REFS1) | _BV(MUX5) | _BV(MUX1);
-  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
-    ADMUX = _BV(REFS1) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1) | _BV(MUX0);
-  #else
-    ADMUX = _BV(REFS1) | _BV(REFS0) | _BV(MUX3);
-  #endif
-
-  delay(2); // Wait for ADMUX setting to settle
-  ADCSRA |= _BV(ADSC); // Start conversion
-  while (bit_is_set(ADCSRA,ADSC)); // measuring
-
-  uint8_t low = ADCL; // must read ADCL first - it then locks ADCH
-  uint8_t high = ADCH; // unlocks both
-  long result = (high << 8) | low; // combine the two
-
-  return result;
-}
-
-
-float getTemp() { 
-  // replace these constants with your 2 data points
-  // these are sample values that will get you in the ballpark (in degrees C)
-  float temp1 = 0;
-  long data1 = 274;
-  float temp2 = 25.0;
-  long data2 = 304;
-  long rawData = readTemp();
- 
-  // calculate the scale factor
-  float scaleFactor = (temp2 - temp1) / (data2 - data1);
-
-  // now calculate the temperature
-  float temp = scaleFactor * (rawData - data1) + temp1;
-
-  return temp;
-}
