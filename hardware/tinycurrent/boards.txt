@@ -1,0 +1,30 @@
+###########################################################################
+
+tinycurrent85.name=TinyCurrent85 @ 16 MHz (internal PLL; 2.7 V BOD)
+
+# The following do NOT work...
+# tinycurrent85.upload.using=avrispv2
+# tinycurrent85.upload.using=Pololu USB AVR Programmer
+
+# The following DO work (pick one)...
+tinycurrent85.upload.using=arduino:arduinoisp
+# tinycurrent85.upload.protocol=avrispv2
+# tinycurrent85.upload.using=pololu
+
+tinycurrent85.upload.maximum_size=8192
+
+# PLL Clock; Start-up time PWRDWN/RESET: 1K CK/14 CK + 4 ms; [CKSEL=0001 SUT=00]
+# Brown-out detection level at VCC=2.7 V; [BODLEVEL=101]
+# Preserve EEPROM memory through the Chip Erase cycle; [EESAVE=0]
+# Serial program downloading (SPI) enabled; [SPIEN=0]
+
+tinycurrent85.bootloader.low_fuses=0xC1
+tinycurrent85.bootloader.high_fuses=0xD5
+tinycurrent85.bootloader.extended_fuses=0xFF
+tinycurrent85.bootloader.path=empty
+tinycurrent85.bootloader.file=empty85at16.hex
+
+tinycurrent85.build.mcu=attiny85
+tinycurrent85.build.f_cpu=16000000L
+tinycurrent85.build.core=tiny
+
